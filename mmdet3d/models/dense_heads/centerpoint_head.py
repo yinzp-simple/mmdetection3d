@@ -52,6 +52,7 @@ class SeparateHead(BaseModule):
         self.heads = heads
         self.init_bias = init_bias
         for head in self.heads:
+            # reg, height, dim, rot, vel, heatmap(cls, 2)
             classes, num_conv = self.heads[head]
             conv_layers = []
             c_in = in_channels
@@ -329,7 +330,7 @@ class CenterHead(BaseModule):
             bias=bias)
 
         self.task_heads = nn.ModuleList()
-
+        # 每个任务构建一个task_head
         for num_cls in num_classes:
             heads = copy.deepcopy(common_heads)
             heads.update(dict(heatmap=(num_cls, num_heatmap_convs)))
@@ -358,7 +359,15 @@ class CenterHead(BaseModule):
 
     def forward(self, feats: List[Tensor]) -> Tuple[List[Tensor]]:
         """Forward pass.
-
+        FPN特征: [Tensor(B, N, W, H), Tensor(B, N, W, H), Tensor(B, N, W, H)]
+        每个forward single返回
+        FPN1: [task1_dict, task2_dict, task3_dict]
+        FPN2: [task1_dict, task2_dict, task3_dict]
+        FPN3: [task1_dict, task2_dict, task3_dict]
+        multi_apply应用之后, 会将每个task的返回组织到一起:
+        ([task1_dict_fpn1, task1_dict_fpn2, task1_dict_fpn3],
+         [task2_dict_fpn1, task2_dict_fpn2, task2_dict_fpn3],
+         [task3_dict_fpn1, task3_dict_fpn2, task3_dict_fpn3])
         Args:
             feats (list[torch.Tensor]): Multi-level features, e.g.,
                 features produced by FPN.
